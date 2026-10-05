@@ -4,11 +4,21 @@ from openai import OpenAI
 from typing import List
 
 api_key = os.getenv("LLM_API_KEY")
+is_groq = False
 
-if api_key == "AIzaSyBfs3TiEsQdqFpJAvOiFvoe880nM51PwXM" or not api_key:
+if api_key and (api_key.startswith("your_") or api_key == "AIzaSyBfs3TiEsQdqFpJAvOiFvoe880nM51PwXM"):
     api_key = None
 
-client = OpenAI(api_key=api_key) if api_key else None
+if api_key and api_key.startswith("gsk_"):
+    is_groq = True
+    client = OpenAI(api_key=api_key, base_url="https://api.groq.com/openai/v1")
+    model_name = "llama-3.3-70b-versatile"
+elif api_key:
+    client = OpenAI(api_key=api_key)
+    model_name = "gpt-4o-mini"
+else:
+    client = None
+    model_name = "mock"
 
 def is_mock_mode():
     return client is None
@@ -44,7 +54,7 @@ Example output:
 """
     try:
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=model_name,
             messages=[
                 {"role": "system", "content": "You output JSON arrays."},
                 {"role": "user", "content": prompt}
