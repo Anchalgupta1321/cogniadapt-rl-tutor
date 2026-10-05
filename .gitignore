@@ -4,3 +4,6 @@ __pycache__/
 .env
 *.db
 .DS_Store
+data/test_*.json
+data/sim_*.json
+data/dqn_model/

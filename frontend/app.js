@@ -273,10 +273,10 @@ async function submit(val, el, q) {
         updateProgressUI();
         addChartBar(data.is_correct, data.next_recommended_difficulty);
 
-        // Feedback details
+        // Feedback details with RL tag
         const diffText = data.original_difficulty === data.next_recommended_difficulty 
-            ? `Difficulty: ${data.original_difficulty}`
-            : `Difficulty: ${data.original_difficulty} → ${data.next_recommended_difficulty}`;
+            ? `Difficulty: ${data.original_difficulty} (RL Policy Stable)`
+            : `Difficulty: ${data.original_difficulty} → ${data.next_recommended_difficulty} (RL Policy Dynamic Shift)`;
         
         const sourceText = `Source: ${data.source_chunk_id.split('_').slice(-2).join(' ')}`;
 
@@ -323,7 +323,9 @@ async function submit(val, el, q) {
     }
 }
 
-function updateProgressUI() {
+let bktRadarChart = null;
+
+async function updateProgressUI() {
     dom.statAttempted.textContent = appState.attempts;
     const acc = appState.attempts > 0 ? Math.round((appState.correctCount / appState.attempts) * 100) : 0;
     dom.statAccuracy.textContent = `${acc}%`;
@@ -331,6 +333,81 @@ function updateProgressUI() {
     // Get current difficulty from last entry or default
     const current = appState.history.length > 0 ? appState.history[appState.history.length-1].level : 'medium';
     dom.statLevel.textContent = current.charAt(0).toUpperCase() + current.slice(1);
+
+    // Update BKT Topic Mastery Radar Chart
+    await updateBKTRadarChart();
+}
+
+async function updateBKTRadarChart() {
+    const canvas = document.getElementById('bkt-radar-chart');
+    if (!canvas) return;
+
+    try {
+        const res = await fetch(`${API_BASE}/bkt/mastery/${STUDENT_ID}`);
+        const data = await res.json();
+        
+        const avgDisp = document.getElementById('bkt-avg-display');
+        if (avgDisp) avgDisp.textContent = `Avg: ${data.overall_mastery_avg}%`;
+
+        const breakdown = data.mastery_breakdown || {};
+        const labels = Object.keys(breakdown);
+        const scores = labels.map(t => breakdown[t].mastery_percent);
+        const target = labels.map(() => 100);
+
+        if (bktRadarChart) {
+            bktRadarChart.data.labels = labels;
+            bktRadarChart.data.datasets[0].data = scores;
+            bktRadarChart.update();
+            return;
+        }
+
+        const ctx = canvas.getContext('2d');
+        bktRadarChart = new Chart(ctx, {
+            type: 'radar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Student Mastery %',
+                        data: scores,
+                        backgroundColor: 'rgba(99, 102, 241, 0.25)',
+                        borderColor: '#6366f1',
+                        borderWidth: 2,
+                        pointBackgroundColor: '#818cf8',
+                        pointBorderColor: '#fff'
+                    },
+                    {
+                        label: 'Target Mastery',
+                        data: target,
+                        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                        borderColor: 'rgba(255, 255, 255, 0.2)',
+                        borderWidth: 1,
+                        borderDash: [4, 4],
+                        pointRadius: 0
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    r: {
+                        angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                        pointLabels: { color: '#94a3b8', font: { size: 10, weight: 'bold' } },
+                        ticks: { display: false },
+                        suggestedMin: 0,
+                        suggestedMax: 100
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    } catch (e) {
+        console.warn("BKT Radar Chart error:", e);
+    }
 }
 
 function addChartBar(isCorrect, level) {
@@ -382,3 +459,149 @@ dom.btnReset.addEventListener('click', async () => {
         location.reload();
     } catch(e) { console.error(e); }
 });
+
+// --- Tab Switching Navigation ---
+function switchTab(tabName) {
+    ['quiz', 'chat', 'flashcards'].forEach(t => {
+        const btn = document.getElementById(`tab-btn-${t}`);
+        const sec = document.getElementById(`section-${t}`);
+        if (btn) btn.classList.toggle('active', t === tabName);
+        if (sec) sec.classList.toggle('hidden', t !== tabName);
+    });
+    lucide.createIcons();
+}
+
+// --- Grounded AI Tutor Chat Handler ---
+const btnSendChat = document.getElementById('btn-send-chat');
+const chatInput = document.getElementById('chat-input');
+const chatMessages = document.getElementById('chat-messages');
+
+if (btnSendChat && chatInput) {
+    async function sendChatMessage() {
+        const query = chatInput.value.trim();
+        if (!query) return;
+
+        // Append Student Message
+        const userMsg = document.createElement('div');
+        userMsg.className = 'chat-bubble user';
+        userMsg.style.cssText = 'background: var(--primary); color: white; padding: 0.9rem 1.25rem; border-radius: 12px; max-width: 85%; align-self: flex-end; font-weight: 500;';
+        userMsg.textContent = query;
+        chatMessages.appendChild(userMsg);
+        chatInput.value = '';
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        // Append Loading Indicator
+        const loadingMsg = document.createElement('div');
+        loadingMsg.className = 'chat-bubble ai loading';
+        loadingMsg.style.cssText = 'background: #f1f5f9; padding: 0.9rem 1.25rem; border-radius: 12px; max-width: 85%; align-self: flex-start; color: var(--text-dim); font-style: italic;';
+        loadingMsg.textContent = 'Searching course materials & verifying citations...';
+        chatMessages.appendChild(loadingMsg);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        try {
+            const res = await fetch(`${API_BASE}/chat/tutor`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    student_id: STUDENT_ID,
+                    query: query,
+                    source_id: appState.sourceId
+                })
+            });
+            const data = await res.json();
+            chatMessages.removeChild(loadingMsg);
+
+            const aiMsg = document.createElement('div');
+            aiMsg.className = 'chat-bubble ai';
+            
+            if (!data.is_grounded) {
+                aiMsg.style.cssText = 'background: #fee2e2; border-left: 4px solid #ef4444; padding: 1rem; border-radius: 12px; max-width: 85%; align-self: flex-start; color: #991b1b;';
+                aiMsg.innerHTML = `<strong>⚠️ OUT-OF-MATERIAL REFUSAL</strong><br><br>${data.answer}`;
+            } else {
+                aiMsg.style.cssText = 'background: #f8fafc; border-left: 4px solid var(--primary); padding: 1rem; border-radius: 12px; max-width: 85%; align-self: flex-start; border: 1px solid var(--border);';
+                
+                let citationBadges = (data.citations || []).map(c => 
+                    `<span style="background: #dbeafe; color: #1e40af; font-size: 0.75rem; padding: 2px 8px; border-radius: 12px; font-weight: 700; margin-right: 4px;">📌 ${c.citation_label}</span>`
+                ).join(' ');
+
+                aiMsg.innerHTML = `<div>${data.answer.replace(/\n/g, '<br>')}</div><div style="margin-top: 0.75rem; font-size: 0.8rem;">${citationBadges}</div>`;
+            }
+            
+            chatMessages.appendChild(aiMsg);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        } catch (e) {
+            chatMessages.removeChild(loadingMsg);
+            const errMsg = document.createElement('div');
+            errMsg.style.cssText = 'background: #fee2e2; color: #991b1b; padding: 0.75rem; border-radius: 8px;';
+            errMsg.textContent = 'Server connection error.';
+            chatMessages.appendChild(errMsg);
+        }
+    }
+
+    btnSendChat.addEventListener('click', sendChatMessage);
+    chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendChatMessage(); });
+}
+
+// --- Revision Flashcards Handler ---
+const btnLoadFlashcards = document.getElementById('btn-load-flashcards');
+const flashcardGrid = document.getElementById('flashcard-grid');
+
+if (btnLoadFlashcards && flashcardGrid) {
+    btnLoadFlashcards.addEventListener('click', async () => {
+        try {
+            btnLoadFlashcards.disabled = true;
+            flashcardGrid.innerHTML = `<div style="color: var(--text-dim);">Fetching targeted flashcards for weak BKT topics...</div>`;
+            
+            const res = await fetch(`${API_BASE}/revision/flashcards`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ student_id: STUDENT_ID })
+            });
+            const cards = await res.json();
+            
+            if (!cards || cards.length === 0) {
+                flashcardGrid.innerHTML = `<div style="color: var(--text-dim);">No revision flashcards generated yet. Take a quiz first!</div>`;
+                return;
+            }
+
+            flashcardGrid.innerHTML = '';
+            cards.forEach(c => {
+                const cardEl = document.createElement('div');
+                cardEl.style.cssText = 'background: #ffffff; border: 1.5px solid var(--border); border-radius: 16px; padding: 1.5rem; cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease; display: flex; flex-direction: column; justify-content: space-between; min-height: 200px; box-shadow: 0 4px 12px rgba(15,23,42,0.04);';
+                cardEl.innerHTML = `
+                    <div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.75rem;">
+                            <span style="font-size: 0.75rem; font-weight: 700; color: var(--primary); text-transform: uppercase;">${c.topic}</span>
+                            <span style="font-size: 0.75rem; color: #64748b; font-family: monospace;">${c.source_citation}</span>
+                        </div>
+                        <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text-main);">${c.concept_title}</h4>
+                        <p style="font-size: 0.9rem; color: #475569; font-weight: 500;" class="card-text">${c.front_prompt}</p>
+                    </div>
+                    <div style="font-size: 0.75rem; color: var(--primary); font-weight: 700; margin-top: 1rem; text-align: right;">💡 Click to reveal answer</div>
+                `;
+                
+                let isFlipped = false;
+                cardEl.addEventListener('click', () => {
+                    const p = cardEl.querySelector('.card-text');
+                    if (isFlipped) {
+                        p.textContent = c.front_prompt;
+                        p.style.color = '#475569';
+                        isFlipped = false;
+                    } else {
+                        p.textContent = c.back_explanation;
+                        p.style.color = '#047857';
+                        isFlipped = true;
+                    }
+                });
+
+                flashcardGrid.appendChild(cardEl);
+            });
+        } catch (e) {
+            flashcardGrid.innerHTML = `<div style="color: var(--danger);">Failed to load flashcards.</div>`;
+        } finally {
+            btnLoadFlashcards.disabled = false;
+        }
+    });
+}
+
+

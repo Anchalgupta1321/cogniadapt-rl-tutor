@@ -1,6 +1,8 @@
-# Peblo AI Backend Engineer Challenge
+# CogniAdapt AI | Deep RL & Source-Grounded Tutoring Platform
 
-This repository contains a prototype backend system for ingesting educational content from PDFs and generating quiz questions using an LLM, developed for the Peblo challenge.
+CogniAdapt AI is an advanced, multimodal educational AI companion built with **PyTorch Deep Q-Networks (DQN)**, **Bayesian Knowledge Tracing (BKT)**, **Thompson Sampling Item Calibration**, **Source-Grounded RAG with Inline Citations & Refusal Guardrails**, and **Dense Vector Semantic Deduplication**.
+
+Developed for the **Multimodal AI Hackathon 2026 (Track D: Personalized Tutoring & Adaptive Learning)**.
 
 ## System Architecture
 
@@ -30,8 +32,9 @@ Student Answers + Adaptive Difficulty
 
 1. **Traceability**: Questions maintain a strict reference to the `source_chunk_id`.
 2. **Clean Architecture**: Structured isolating `ingestion`, `llm`, `services`, and `api` modules.
-3. **Adaptive Difficulty Logic**: Easy → correct → medium; Medium → correct → hard; Hard → wrong → medium.
+3. **RL-Based Adaptive Difficulty Engine**: Reinforcement Learning (Q-Learning) policy matrix optimizing student engagement in the Zone of Proximal Development (ZPD target ~70-80% accuracy). State-action rewards penalize frustration & boredom while rewarding high-level mastery.
 4. **Duplicate Detection Framework**: Built defensively against LLM overlapping. 
+5. **Policy Analytics**: Dedicated `/rl/stats` endpoint exposing live Q-table matrix, exploration rate ($\epsilon$), and iteration tracking.
 
 ## Setup Instructions
 

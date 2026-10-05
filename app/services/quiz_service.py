@@ -1,22 +1,25 @@
 from sqlalchemy.orm import Session
 from app import models
+from app.rl.rlaif_evaluator import rlaif_evaluator
 import json
 import uuid
 
-def is_duplicate(db: Session, question_text: str) -> bool:
-    """Check for duplicate questions by literal string match.
-       For a more robust solution, you would use sentence-transformers to generate embeddings 
-       and check semantic similarity using pgvector or a vector store.
-    """
-    exists = db.query(models.Questions).filter(models.Questions.question == question_text).first()
-    return bool(exists)
+from app.services.vector_dedup import is_semantic_duplicate
 
 def save_generated_questions(db: Session, questions_data: list):
-    """Saves generated generated questions into database avoiding duplicates."""
+    """Saves generated questions into database after Dense Vector Semantic Deduplication and RLAIF reward validation."""
     stored = []
     for q in questions_data:
-        # Deduplication check
-        if is_duplicate(db, q['question']):
+        # 1. Dense Vector Semantic Deduplication check
+        is_dup, sim_score, matched_q = is_semantic_duplicate(db, q['question'], threshold=0.82)
+        if is_dup:
+            print(f"[Vector Dedup] Skipped semantic duplicate (Similarity: {sim_score}): '{q['question']}' matched with '{matched_q}'")
+            continue
+
+        # 2. RLAIF Reward Model Filtering
+        eval_result = rlaif_evaluator.evaluate_question(q)
+        if not eval_result["accepted"]:
+            print(f"[RLAIF] Question rejected due to low reward score ({eval_result['composite_reward']}): '{q.get('question')}'")
             continue
             
         options = q.get('options', [])
@@ -34,3 +37,4 @@ def save_generated_questions(db: Session, questions_data: list):
         
     db.commit()
     return stored
+

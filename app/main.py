@@ -2,12 +2,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.database import engine, Base
-from app.api import ingest_api, quiz_api, answer_api
+from app.api import ingest_api, quiz_api, answer_api, rl_api, bkt_api, chat_api, revision_api
 
 # Create DB tables
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Peblo Quiz Engine")
+app = FastAPI(title="CogniAdapt AI Engine")
 
 # Add CORS middleware
 app.add_middleware(
@@ -22,6 +22,10 @@ app.add_middleware(
 app.include_router(ingest_api.router)
 app.include_router(quiz_api.router)
 app.include_router(answer_api.router)
+app.include_router(rl_api.router)
+app.include_router(bkt_api.router)
+app.include_router(chat_api.router)
+app.include_router(revision_api.router)
 
 import os
 # Create frontend directory unconditionally
@@ -30,4 +34,4 @@ app.mount("/ui", StaticFiles(directory="frontend", html=True), name="frontend")
 
 @app.get("/")
 def read_root():
-    return {"message": "Welcome to Peblo Quiz Engine API"}
+    return {"message": "Welcome to CogniAdapt AI Engine"}
