@@ -32,6 +32,9 @@ import os
 os.makedirs("frontend", exist_ok=True)
 app.mount("/ui", StaticFiles(directory="frontend", html=True), name="frontend")
 
+from fastapi.responses import RedirectResponse
+
 @app.get("/")
 def read_root():
-    return {"message": "Welcome to CogniAdapt AI Engine"}
+    return RedirectResponse(url="/ui/")
+
