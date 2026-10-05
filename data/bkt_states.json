@@ -2,8 +2,8 @@
   "S001-ALPHA": {
     "Math": {
       "p_know": 0.999,
-      "attempts": 10,
-      "correct": 10
+      "attempts": 11,
+      "correct": 11
     }
   }
 }
