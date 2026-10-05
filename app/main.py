@@ -1,13 +1,18 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from app.database import engine, Base
+from app.database import engine, Base, seed_default_data
 from app.api import ingest_api, quiz_api, answer_api, rl_api, bkt_api, chat_api, revision_api
 
-# Create DB tables
+# Create DB tables & seed default curriculum
 Base.metadata.create_all(bind=engine)
+try:
+    seed_default_data()
+except Exception as e:
+    print(f"[Startup Seed] {e}")
 
 app = FastAPI(title="CogniAdapt AI Engine")
+
 
 # Add CORS middleware
 app.add_middleware(
