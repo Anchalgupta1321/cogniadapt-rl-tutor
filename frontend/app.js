@@ -521,7 +521,7 @@ dom.btnReset.addEventListener('click', async () => {
 
 // --- Tab Switching Navigation ---
 function switchTab(tabName) {
-    ['quiz', 'chat', 'flashcards', 'analytics'].forEach(t => {
+    ['quiz', 'chat', 'flashcards', 'analytics', 'gamification'].forEach(t => {
         const btn = document.getElementById(`tab-btn-${t}`);
         const sec = document.getElementById(`section-${t}`);
         if (btn) btn.classList.toggle('active', t === tabName);
@@ -529,9 +529,13 @@ function switchTab(tabName) {
     });
     if (tabName === 'analytics') {
         loadClassroomHeatmap();
+    } else if (tabName === 'gamification') {
+        loadGamificationProfile();
+        loadPeerLeaderboard();
     }
     if (window.lucide) lucide.createIcons();
 }
+
 
 
 // --- Mermaid.js Diagram Renderer Helper ---
@@ -856,6 +860,99 @@ async function triggerStudentRemedial(studentId, weakTopic) {
 
 if (btnRefreshHeatmap) btnRefreshHeatmap.addEventListener('click', loadClassroomHeatmap);
 if (btnGenerateRemedial) btnGenerateRemedial.addEventListener('click', () => triggerStudentRemedial('S001-ALPHA', 'Deep Q-Learning'));
+
+// --- Gamification & Leaderboard Handler ---
+async function loadGamificationProfile() {
+    try {
+        const res = await fetch(`${API_BASE}/gamification/profile?student_id=${STUDENT_ID}`);
+        const data = await res.json();
+
+        // Update Header Badges
+        const streakText = document.getElementById('streak-count-text');
+        const xpText = document.getElementById('xp-count-text');
+        if (streakText) streakText.textContent = `${data.daily_streak_days} Days`;
+        if (xpText) xpText.textContent = `${data.xp_points} XP`;
+
+        // Update Profile Card
+        const levelTitle = document.getElementById('prof-level-title');
+        const totalXp = document.getElementById('prof-total-xp');
+        const streakTextCard = document.getElementById('prof-streak-text');
+        const quizCount = document.getElementById('prof-quizzes-count');
+
+        if (levelTitle) levelTitle.textContent = data.level_title;
+        if (totalXp) totalXp.textContent = `${data.xp_points.toLocaleString()} XP`;
+        if (streakTextCard) streakTextCard.textContent = `🔥 ${data.daily_streak_days}-Day Practice Streak`;
+        if (quizCount) quizCount.textContent = data.quizzes_completed;
+
+        // Render Badges Grid
+        const badgesGrid = document.getElementById('badges-grid');
+        if (badgesGrid) {
+            badgesGrid.innerHTML = '';
+            data.unlocked_badges.forEach(b => {
+                const bCard = document.createElement('div');
+                const isUnlocked = b.unlocked;
+                bCard.style.cssText = isUnlocked 
+                    ? 'background: #ffffff; border: 1.5px solid #818cf8; border-radius: 12px; padding: 1rem; box-shadow: 0 4px 12px rgba(99,102,241,0.1);'
+                    : 'background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 12px; padding: 1rem; opacity: 0.6;';
+
+                bCard.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                        <span style="font-size: 1.75rem;">${b.icon}</span>
+                        <div>
+                            <h4 style="font-size: 0.95rem; font-weight: 700; margin: 0; color: var(--text-main);">${b.title}</h4>
+                            <span style="font-size: 0.7rem; font-weight: 700; color: ${isUnlocked ? '#047857' : '#64748b'};">${isUnlocked ? '✓ Unlocked' : '🔒 Locked'}</span>
+                        </div>
+                    </div>
+                    <p style="font-size: 0.8rem; color: var(--text-dim); margin: 0;">${b.description}</p>
+                `;
+                badgesGrid.appendChild(bCard);
+            });
+        }
+    } catch(e) {
+        console.error("Gamification Profile Error:", e);
+    }
+}
+
+async function loadPeerLeaderboard() {
+    const lTable = document.getElementById('leaderboard-table-body');
+    const cName = document.getElementById('leaderboard-cohort-name');
+    if (!lTable) return;
+
+    try {
+        const res = await fetch(`${API_BASE}/gamification/leaderboard`);
+        const data = await res.json();
+
+        if (cName) cName.textContent = data.cohort_name;
+        lTable.innerHTML = '';
+
+        data.top_rankings.forEach(r => {
+            const tr = document.createElement('tr');
+            tr.style.cssText = r.is_current_user 
+                ? 'background: #eff6ff; font-weight: 700; border-left: 4px solid var(--primary);'
+                : 'border-bottom: 1px solid #f1f5f9;';
+
+            let rankBadge = r.rank === 1 ? '🥇 1st' : r.rank === 2 ? '🥈 2nd' : r.rank === 3 ? '🥉 3rd' : `#${r.rank}`;
+
+            tr.innerHTML = `
+                <td style="padding: 0.85rem; font-weight: 800; color: var(--primary);">${rankBadge}</td>
+                <td style="padding: 0.85rem;">${r.student_handle}</td>
+                <td style="padding: 0.85rem; font-weight: 700; color: #3730a3;">⚡ ${r.xp_points} XP</td>
+                <td style="padding: 0.85rem;">🔥 ${r.daily_streak} Days</td>
+                <td style="padding: 0.85rem; color: #047857; font-weight: 700;">${r.mastery_velocity}</td>
+                <td style="padding: 0.85rem;">🏆 ${r.badges_count} Badges</td>
+            `;
+            lTable.appendChild(tr);
+        });
+    } catch(e) {
+        console.error("Leaderboard Error:", e);
+    }
+}
+
+// Initial Gamification Profile Check on Load
+document.addEventListener('DOMContentLoaded', () => {
+    loadGamificationProfile();
+});
+
 
 
 

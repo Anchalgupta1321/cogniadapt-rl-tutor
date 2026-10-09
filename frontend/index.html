@@ -30,7 +30,13 @@
                 <i data-lucide="cpu" style="color: var(--primary)"></i>
                 CogniAdapt <span>AI</span>
             </div>
-            <div class="student-profile">
+            <div class="student-profile" style="display: flex; align-items: center; gap: 1rem;">
+                <div id="user-streak-badge" style="display: flex; align-items: center; gap: 4px; background: #ffedd5; color: #c2410c; padding: 4px 10px; border-radius: 20px; font-weight: 700; font-size: 0.8rem;">
+                    🔥 <span id="streak-count-text">5 Days</span>
+                </div>
+                <div id="user-xp-badge" style="display: flex; align-items: center; gap: 4px; background: #e0e7ff; color: #3730a3; padding: 4px 10px; border-radius: 20px; font-weight: 700; font-size: 0.8rem;">
+                    ⚡ <span id="xp-count-text">1250 XP</span>
+                </div>
                 <div class="profile-info">
                     <div style="font-weight: 700; font-size: 0.9rem;">Alex Thompson</div>
                     <div style="font-size: 0.75rem; color: var(--text-dim);">ID: S001-ALPHA</div>
@@ -38,6 +44,7 @@
                 <div class="avatar">AT</div>
             </div>
         </header>
+
 
         <main class="dashboard">
             <!-- Sidebar: Intake & Config -->
@@ -194,6 +201,10 @@
                     <button class="nav-tab" id="tab-btn-analytics" onclick="switchTab('analytics')">
                         <i data-lucide="bar-chart-3"></i> Educator Analytics
                     </button>
+                    <button class="nav-tab" id="tab-btn-gamification" onclick="switchTab('gamification')">
+                        <i data-lucide="trophy"></i> XP & Leaderboard
+                    </button>
+
 
                 </nav>
 
@@ -401,10 +412,72 @@
                         <div id="remedial-output-container" class="hidden" style="margin-top: 1rem; padding: 1.25rem; background: #f8fafc; border-radius: 12px; border: 1px solid var(--border);">
                             <!-- Injected Remedial Plan -->
                         </div>
+                </div>
+
+                <!-- Tab 5: Gamification & Leaderboard Section -->
+                <div id="section-gamification" class="hidden">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem;">
+                        <div>
+                            <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-main);">Gamification & Peer Leaderboard</h2>
+                            <p style="font-size: 0.85rem; color: var(--text-dim);">Earn XP points, maintain practice streaks, unlock achievement badges, and track cohort ranking.</p>
+                        </div>
+                    </div>
+
+                    <!-- Student Level & XP Progress Card -->
+                    <div style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; padding: 1.5rem; border-radius: 16px; margin-bottom: 2rem; box-shadow: 0 10px 25px -5px rgba(99,102,241,0.4);">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                            <div>
+                                <span style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; opacity: 0.8; font-weight: 700;">Student Status</span>
+                                <h3 style="font-size: 1.5rem; font-weight: 800; margin: 4px 0 0 0;" id="prof-level-title">Level 5 - Deep RL Scholar</h3>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="font-size: 1.75rem; font-weight: 900;" id="prof-total-xp">1,250 XP</div>
+                                <span style="font-size: 0.8rem; opacity: 0.9;" id="prof-streak-text">🔥 5-Day Practice Streak</span>
+                            </div>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.2); height: 8px; border-radius: 4px; overflow: hidden; margin-bottom: 0.5rem;">
+                            <div style="background: #facc15; width: 62.5%; height: 100%;"></div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.75rem; opacity: 0.9;">
+                            <span>Progress to Level 6: 1,250 / 2,000 XP</span>
+                            <span>Quizzes Completed: <strong id="prof-quizzes-count">14</strong></span>
+                        </div>
+                    </div>
+
+                    <!-- Achievement Badges Grid -->
+                    <div style="margin-bottom: 2rem;">
+                        <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--text-main); margin-bottom: 1rem;">🏆 Achievement Badges (BKT Mastery > 85%)</h3>
+                        <div id="badges-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+                            <!-- Injected via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Peer Leaderboard Table -->
+                    <div style="background: #ffffff; padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border); overflow-x: auto;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                            <h3 style="font-size: 1rem; font-weight: 700; margin: 0;">👥 Anonymous Peer Cohort Leaderboard</h3>
+                            <span style="font-size: 0.75rem; color: var(--text-dim);" id="leaderboard-cohort-name">CogniAdapt Cohort A</span>
+                        </div>
+                        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
+                            <thead>
+                                <tr style="border-bottom: 2px solid #e2e8f0; color: var(--text-dim);">
+                                    <th style="padding: 0.75rem;">Rank</th>
+                                    <th style="padding: 0.75rem;">Student Handle</th>
+                                    <th style="padding: 0.75rem;">XP Points</th>
+                                    <th style="padding: 0.75rem;">Daily Streak</th>
+                                    <th style="padding: 0.75rem;">Mastery Velocity</th>
+                                    <th style="padding: 0.75rem;">Badges</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leaderboard-table-body">
+                                <!-- Injected via JS -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 
             </main>
+
 
         </main>
     </div>
