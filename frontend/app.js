@@ -530,66 +530,146 @@ function switchTab(tabName) {
     lucide.createIcons();
 }
 
-// --- Grounded AI Tutor Chat Handler ---
+// --- Mermaid.js Diagram Renderer Helper ---
+function renderMermaidDiagramsInElement(element) {
+    if (!window.mermaid) return;
+    const text = element.innerHTML;
+    if (text.includes('```mermaid')) {
+        const regex = /```mermaid([\s\S]*?)```/g;
+        let idCounter = 0;
+        const newHtml = text.replace(regex, (match, mermaidCode) => {
+            idCounter++;
+            const divId = `mermaid-diag-${Date.now()}-${idCounter}`;
+            const cleanCode = mermaidCode.replace(/<br>/g, '\n').trim();
+            setTimeout(() => {
+                try {
+                    mermaid.render(divId + '-svg', cleanCode).then(({ svg }) => {
+                        const target = document.getElementById(divId);
+                        if (target) target.innerHTML = svg;
+                    }).catch(err => {
+                        console.error("Mermaid Render Error:", err);
+                        const target = document.getElementById(divId);
+                        if (target) target.innerHTML = `<pre style="text-align:left; font-size:0.75rem; background:#f1f5f9; padding:0.5rem;">${cleanCode}</pre>`;
+                    });
+                } catch (err) {
+                    console.error("Mermaid Exception:", err);
+                }
+            }, 50);
+            return `<div id="${divId}" class="mermaid-container" style="background: #ffffff; padding: 1rem; border-radius: 12px; border: 1px solid #e2e8f0; margin: 1rem 0; overflow-x: auto; text-align: center;">Rendering Visual Diagram...</div>`;
+        });
+        element.innerHTML = newHtml;
+    }
+}
+
+// --- Grounded AI Tutor & Vision Chat Handler ---
 const btnSendChat = document.getElementById('btn-send-chat');
 const chatInput = document.getElementById('chat-input');
 const chatMessages = document.getElementById('chat-messages');
+const btnUploadImage = document.getElementById('btn-upload-image');
+const tutorImageInput = document.getElementById('tutor-image-input');
+const attachedImageContainer = document.getElementById('attached-image-container');
+const attachedFilename = document.getElementById('attached-filename');
+const btnRemoveImage = document.getElementById('btn-remove-image');
+
+if (btnUploadImage && tutorImageInput) {
+    btnUploadImage.addEventListener('click', () => tutorImageInput.click());
+    tutorImageInput.addEventListener('change', (e) => {
+        if (e.target.files.length) {
+            attachedFilename.textContent = e.target.files[0].name;
+            attachedImageContainer.classList.remove('hidden');
+        }
+    });
+    if (btnRemoveImage) {
+        btnRemoveImage.addEventListener('click', () => {
+            tutorImageInput.value = '';
+            attachedImageContainer.classList.add('hidden');
+        });
+    }
+}
 
 if (btnSendChat && chatInput) {
     async function sendChatMessage() {
         const query = chatInput.value.trim();
-        if (!query) return;
+        const imageFile = tutorImageInput && tutorImageInput.files.length ? tutorImageInput.files[0] : null;
+
+        if (!query && !imageFile) return;
 
         // Append Student Message
         const userMsg = document.createElement('div');
         userMsg.className = 'chat-bubble user';
         userMsg.style.cssText = 'background: var(--primary); color: white; padding: 0.9rem 1.25rem; border-radius: 12px; max-width: 85%; align-self: flex-end; font-weight: 500;';
-        userMsg.textContent = query;
+
+        if (imageFile) {
+            userMsg.innerHTML = `<div style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; margin-bottom: 4px; background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 8px;">📷 Image Attached: ${imageFile.name}</div><div>${query || 'Analyze uploaded diagram / formula'}</div>`;
+        } else {
+            userMsg.textContent = query;
+        }
+
         chatMessages.appendChild(userMsg);
         chatInput.value = '';
+
+        if (attachedImageContainer) attachedImageContainer.classList.add('hidden');
         chatMessages.scrollTop = chatMessages.scrollHeight;
 
         // Append Loading Indicator
         const loadingMsg = document.createElement('div');
         loadingMsg.className = 'chat-bubble ai loading';
         loadingMsg.style.cssText = 'background: #f1f5f9; padding: 0.9rem 1.25rem; border-radius: 12px; max-width: 85%; align-self: flex-start; color: var(--text-dim); font-style: italic;';
-        loadingMsg.textContent = 'Searching course materials & verifying citations...';
+        loadingMsg.textContent = imageFile ? '📷 Processing Multimodal Vision OCR & Generating Diagram...' : 'Searching course materials & verifying citations...';
         chatMessages.appendChild(loadingMsg);
         chatMessages.scrollTop = chatMessages.scrollHeight;
 
         try {
-            const res = await fetch(`${API_BASE}/chat/tutor`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    student_id: STUDENT_ID,
-                    query: query,
-                    source_id: appState.sourceId
-                })
-            });
-            const data = await res.json();
-            chatMessages.removeChild(loadingMsg);
+            let res, data;
+            if (imageFile) {
+                const formData = new FormData();
+                formData.append('file', imageFile);
+                if (query) formData.append('query', query);
+                formData.append('student_id', STUDENT_ID);
+
+                res = await fetch(`${API_BASE}/chat/vision`, {
+                    method: 'POST',
+                    body: formData
+                });
+                if (tutorImageInput) tutorImageInput.value = '';
+            } else {
+                res = await fetch(`${API_BASE}/chat/tutor`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        student_id: STUDENT_ID,
+                        query: query,
+                        source_id: appState.sourceId
+                    })
+                });
+            }
+
+            data = await res.json();
+            if (chatMessages.contains(loadingMsg)) chatMessages.removeChild(loadingMsg);
 
             const aiMsg = document.createElement('div');
             aiMsg.className = 'chat-bubble ai';
-            
+
             if (!data.is_grounded) {
                 aiMsg.style.cssText = 'background: #fee2e2; border-left: 4px solid #ef4444; padding: 1rem; border-radius: 12px; max-width: 85%; align-self: flex-start; color: #991b1b;';
                 aiMsg.innerHTML = `<strong>⚠️ OUT-OF-MATERIAL REFUSAL</strong><br><br>${data.answer}`;
             } else {
                 aiMsg.style.cssText = 'background: #f8fafc; border-left: 4px solid var(--primary); padding: 1rem; border-radius: 12px; max-width: 85%; align-self: flex-start; border: 1px solid var(--border);';
-                
+
                 let citationBadges = (data.citations || []).map(c => 
                     `<span style="background: #dbeafe; color: #1e40af; font-size: 0.75rem; padding: 2px 8px; border-radius: 12px; font-weight: 700; margin-right: 4px;">📌 ${c.citation_label}</span>`
                 ).join(' ');
 
-                aiMsg.innerHTML = `<div>${data.answer.replace(/\n/g, '<br>')}</div><div style="margin-top: 0.75rem; font-size: 0.8rem;">${citationBadges}</div>`;
+                let formattedAnswer = data.answer.replace(/\n/g, '<br>');
+                aiMsg.innerHTML = `<div>${formattedAnswer}</div><div style="margin-top: 0.75rem; font-size: 0.8rem;">${citationBadges}</div>`;
+                renderMermaidDiagramsInElement(aiMsg);
             }
-            
+
             chatMessages.appendChild(aiMsg);
             chatMessages.scrollTop = chatMessages.scrollHeight;
         } catch (e) {
-            chatMessages.removeChild(loadingMsg);
+            console.error("Chat error:", e);
+            if (chatMessages.contains(loadingMsg)) chatMessages.removeChild(loadingMsg);
             const errMsg = document.createElement('div');
             errMsg.style.cssText = 'background: #fee2e2; color: #991b1b; padding: 0.75rem; border-radius: 8px;';
             errMsg.textContent = 'Server connection error.';
@@ -600,6 +680,7 @@ if (btnSendChat && chatInput) {
     btnSendChat.addEventListener('click', sendChatMessage);
     chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendChatMessage(); });
 }
+
 
 // --- Revision Flashcards Handler ---
 const btnLoadFlashcards = document.getElementById('btn-load-flashcards');

@@ -20,3 +20,13 @@ def test_reset_db_endpoint():
     response = client.delete("/reset-db")
     assert response.status_code == 200
     assert response.json()["message"] == "Database wiped successfully."
+
+def test_vision_chat_endpoint():
+    files = {"file": ("test_diagram.png", b"fake_png_bytes", "image/png")}
+    data = {"query": "Analyze photosynthesis diagram", "student_id": "S001-ALPHA"}
+    response = client.post("/chat/vision", files=files, data=data)
+    assert response.status_code == 200
+    res = response.json()
+    assert res["is_grounded"] is True
+    assert "Multimodal Vision OCR" in res["answer"] or "Diagram" in res["answer"]
+

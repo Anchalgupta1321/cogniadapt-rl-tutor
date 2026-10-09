@@ -11,9 +11,11 @@
     <link rel="stylesheet" href="styles.css">
     <!-- Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Confetti & Chart.js -->
+    <!-- Confetti, Chart.js & Mermaid.js -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+
 </head>
 <body>
     <div class="background-blobs">
@@ -296,12 +298,25 @@
                         </div>
                     </div>
 
+                    <div id="attached-image-container" class="hidden" style="margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <div id="attached-image-chip" style="display: flex; align-items: center; gap: 0.5rem; background: #e0e7ff; color: #3730a3; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600;">
+                            <i data-lucide="image" style="width: 14px;"></i>
+                            <span id="attached-filename">diagram.png</span>
+                            <span id="btn-remove-image" style="cursor: pointer; font-weight: bold; margin-left: 4px;">✕</span>
+                        </div>
+                    </div>
+
                     <div style="display: flex; gap: 0.75rem;">
-                        <input type="text" id="chat-input" placeholder="Ask a question about your uploaded materials..." style="flex: 1; padding: 0.9rem 1.25rem; border: 1px solid var(--border); border-radius: 12px; outline: none; font-size: 0.95rem;" />
+                        <input type="file" id="tutor-image-input" accept="image/*" style="display: none;" />
+                        <button class="btn btn-secondary" id="btn-upload-image" title="Upload Formula or Diagram Image" style="display: flex; align-items: center; justify-content: center; width: 46px; padding: 0;">
+                            <i data-lucide="camera"></i>
+                        </button>
+                        <input type="text" id="chat-input" placeholder="Ask a question or upload textbook formula/diagram..." style="flex: 1; padding: 0.9rem 1.25rem; border: 1px solid var(--border); border-radius: 12px; outline: none; font-size: 0.95rem;" />
                         <button class="btn btn-primary" id="btn-send-chat">
                             Ask Tutor <i data-lucide="send"></i>
                         </button>
                     </div>
+
                 </div>
 
                 <!-- Tab 3: Flashcards Revision Section -->
