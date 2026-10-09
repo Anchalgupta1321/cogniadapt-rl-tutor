@@ -191,6 +191,10 @@
                     <button class="nav-tab" id="tab-btn-flashcards" onclick="switchTab('flashcards')">
                         <i data-lucide="layers"></i> Revision Flashcards
                     </button>
+                    <button class="nav-tab" id="tab-btn-analytics" onclick="switchTab('analytics')">
+                        <i data-lucide="bar-chart-3"></i> Educator Analytics
+                    </button>
+
                 </nav>
 
                 <!-- Loading State overlay -->
@@ -333,11 +337,75 @@
                     <div id="flashcard-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem;">
                         <div style="padding: 2rem; background: #ffffff; border: 1.5px dashed #cbd5e1; border-radius: 16px; text-align: center; color: var(--text-dim);">
                             Click "Load Flashcards" to fetch revision materials based on your BKT mastery scores.
+                </div>
+
+                <!-- Tab 4: Teacher & Parent Analytics Portal -->
+                <div id="section-analytics" class="hidden">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem;">
+                        <div>
+                            <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-main);">Classroom Mastery Heatmap & Analytics</h2>
+                            <p style="font-size: 0.85rem; color: var(--text-dim);">Aggregate BKT skill heatmaps across student cohorts and AI remedial plan generator.</p>
+                        </div>
+                        <button class="btn btn-secondary" id="btn-refresh-heatmap">
+                            <i data-lucide="refresh-cw"></i> Refresh Heatmap
+                        </button>
+                    </div>
+
+                    <!-- Analytics Summary Cards -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                        <div style="background: #ffffff; padding: 1.25rem; border-radius: 12px; border: 1px solid var(--border);">
+                            <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-dim); text-transform: uppercase;">Classroom Average</span>
+                            <div style="font-size: 1.75rem; font-weight: 800; color: var(--primary);" id="heatmap-class-avg">78%</div>
+                        </div>
+                        <div style="background: #ffffff; padding: 1.25rem; border-radius: 12px; border: 1px solid var(--border);">
+                            <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-dim); text-transform: uppercase;">At-Risk Students</span>
+                            <div style="font-size: 1.75rem; font-weight: 800; color: #dc2626;" id="heatmap-at-risk">2</div>
+                        </div>
+                        <div style="background: #ffffff; padding: 1.25rem; border-radius: 12px; border: 1px solid var(--border);">
+                            <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-dim); text-transform: uppercase;">Weakest Topic</span>
+                            <div style="font-size: 1.1rem; font-weight: 800; color: #d97706;" id="heatmap-weak-topic">Deep Q-Learning</div>
+                        </div>
+                    </div>
+
+                    <!-- BKT Skill Heatmap Matrix Table -->
+                    <div style="background: #ffffff; padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 2rem; overflow-x: auto;">
+                        <h3 style="font-size: 1rem; font-weight: 700; margin-bottom: 1rem;">Cohort Skill Mastery Matrix (BKT)</h3>
+                        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
+                            <thead>
+                                <tr style="border-bottom: 2px solid #e2e8f0; color: var(--text-dim);">
+                                    <th style="padding: 0.75rem;">Student Name</th>
+                                    <th style="padding: 0.75rem;">Photosynthesis</th>
+                                    <th style="padding: 0.75rem;">Deep Q-Learning</th>
+                                    <th style="padding: 0.75rem;">Item Response Theory</th>
+                                    <th style="padding: 0.75rem;">Overall Mastery</th>
+                                    <th style="padding: 0.75rem;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="heatmap-table-body">
+                                <!-- Injected via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- AI Remedial Plan Generator Card -->
+                    <div style="background: #ffffff; padding: 1.5rem; border-radius: 12px; border: 1.5px solid var(--primary-light);">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                            <div>
+                                <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--text-main); margin: 0;">⚡ AI Remedial Plan Generator</h3>
+                                <p style="font-size: 0.8rem; color: var(--text-dim); margin: 4px 0 0 0;">Generates targeted 5-minute intervention worksheets for struggling students.</p>
+                            </div>
+                            <button class="btn btn-primary" id="btn-generate-remedial">
+                                <i data-lucide="zap"></i> Generate 5-Min Plan
+                            </button>
+                        </div>
+                        <div id="remedial-output-container" class="hidden" style="margin-top: 1rem; padding: 1.25rem; background: #f8fafc; border-radius: 12px; border: 1px solid var(--border);">
+                            <!-- Injected Remedial Plan -->
                         </div>
                     </div>
                 </div>
 
             </main>
+
         </main>
     </div>
 

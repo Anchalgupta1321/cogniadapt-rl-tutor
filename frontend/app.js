@@ -521,14 +521,18 @@ dom.btnReset.addEventListener('click', async () => {
 
 // --- Tab Switching Navigation ---
 function switchTab(tabName) {
-    ['quiz', 'chat', 'flashcards'].forEach(t => {
+    ['quiz', 'chat', 'flashcards', 'analytics'].forEach(t => {
         const btn = document.getElementById(`tab-btn-${t}`);
         const sec = document.getElementById(`section-${t}`);
         if (btn) btn.classList.toggle('active', t === tabName);
         if (sec) sec.classList.toggle('hidden', t !== tabName);
     });
-    lucide.createIcons();
+    if (tabName === 'analytics') {
+        loadClassroomHeatmap();
+    }
+    if (window.lucide) lucide.createIcons();
 }
+
 
 // --- Mermaid.js Diagram Renderer Helper ---
 function renderMermaidDiagramsInElement(element) {
@@ -743,5 +747,115 @@ if (btnLoadFlashcards && flashcardGrid) {
         }
     });
 }
+
+// --- Educator Analytics & Classroom Heatmap Handler ---
+const btnRefreshHeatmap = document.getElementById('btn-refresh-heatmap');
+const btnGenerateRemedial = document.getElementById('btn-generate-remedial');
+const heatmapTableBody = document.getElementById('heatmap-table-body');
+const remedialOutputContainer = document.getElementById('remedial-output-container');
+
+async function loadClassroomHeatmap() {
+    if (!heatmapTableBody) return;
+    try {
+        heatmapTableBody.innerHTML = `<tr><td colspan="6" style="padding:1rem; text-align:center; color:var(--text-dim);">Loading cohort BKT heatmap data...</td></tr>`;
+        const res = await fetch(`${API_BASE}/analytics/classroom-heatmap`);
+        const data = await res.json();
+
+        // Populate Summary Cards
+        const avgElem = document.getElementById('heatmap-class-avg');
+        const riskElem = document.getElementById('heatmap-at-risk');
+        const weakElem = document.getElementById('heatmap-weak-topic');
+
+        if (avgElem) avgElem.textContent = `${Math.round(data.class_average_mastery * 100)}%`;
+        if (riskElem) riskElem.textContent = data.at_risk_students_count;
+        if (weakElem) weakElem.textContent = data.weakest_topic;
+
+        // Render Table Body
+        heatmapTableBody.innerHTML = '';
+        data.students.forEach(s => {
+            const tr = document.createElement('tr');
+            tr.style.cssText = 'border-bottom: 1px solid #f1f5f9;';
+
+            const photoVal = Math.round((s.topics['Photosynthesis'] || 0) * 100);
+            const dqnVal = Math.round((s.topics['Deep Q-Learning'] || 0) * 100);
+            const irtVal = Math.round((s.topics['Item Response Theory'] || 0) * 100);
+            const overallVal = Math.round(s.overall_mastery * 100);
+
+            let statusBadge = s.status === 'Mastered' 
+                ? `<span style="background: #d1fae5; color: #047857; padding: 2px 8px; border-radius: 12px; font-weight: 700; font-size: 0.75rem;">🟢 Mastered</span>`
+                : s.status === 'Developing'
+                ? `<span style="background: #fef3c7; color: #b45309; padding: 2px 8px; border-radius: 12px; font-weight: 700; font-size: 0.75rem;">🟡 Developing</span>`
+                : `<span style="background: #fee2e2; color: #b91c1c; padding: 2px 8px; border-radius: 12px; font-weight: 700; font-size: 0.75rem;">🔴 At Risk</span>`;
+
+            function getScoreCell(val) {
+                const bg = val >= 75 ? '#d1fae5' : val >= 50 ? '#fef3c7' : '#fee2e2';
+                const fg = val >= 75 ? '#047857' : val >= 50 ? '#b45309' : '#b91c1c';
+                return `<span style="background: ${bg}; color: ${fg}; font-weight: 700; padding: 4px 10px; border-radius: 8px; font-size: 0.8rem;">${val}%</span>`;
+            }
+
+            tr.innerHTML = `
+                <td style="padding: 0.85rem; font-weight: 600;">${s.student_name} <br><span style="font-size:0.75rem; color:#94a3b8;">${s.student_id}</span></td>
+                <td style="padding: 0.85rem;">${getScoreCell(photoVal)}</td>
+                <td style="padding: 0.85rem;">${getScoreCell(dqnVal)}</td>
+                <td style="padding: 0.85rem;">${getScoreCell(irtVal)}</td>
+                <td style="padding: 0.85rem;">${statusBadge} (${overallVal}%)</td>
+                <td style="padding: 0.85rem;">
+                    <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.75rem;" onclick="triggerStudentRemedial('${s.student_id}', 'Deep Q-Learning')">
+                        ⚡ Generate Plan
+                    </button>
+                </td>
+            `;
+            heatmapTableBody.appendChild(tr);
+        });
+        if (window.lucide) lucide.createIcons();
+    } catch(e) {
+        console.error("Heatmap Error:", e);
+    }
+}
+
+async function triggerStudentRemedial(studentId, weakTopic) {
+    switchTab('analytics');
+    if (!remedialOutputContainer) return;
+    remedialOutputContainer.classList.remove('hidden');
+    remedialOutputContainer.innerHTML = `<div style="color: var(--text-dim);">Generating 5-Minute AI Remedial Plan for ${studentId}...</div>`;
+
+    try {
+        const res = await fetch(`${API_BASE}/analytics/remedial-plan`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ student_id: studentId, weak_topic: weakTopic })
+        });
+        const plan = await res.json();
+
+        let stepsHtml = plan.action_steps.map(st => `<li>${st}</li>`).join('');
+        let questionsHtml = plan.practice_questions.map((q, idx) => `
+            <div style="background: #ffffff; padding: 0.85rem; border-radius: 8px; border: 1px solid #e2e8f0; margin-top: 0.5rem;">
+                <div style="font-weight: 700; font-size: 0.85rem; color: var(--text-main);">${idx + 1}. ${q.question}</div>
+                <div style="font-size: 0.8rem; color: #047857; font-weight: 600; margin: 4px 0;">Answer: ${q.correct_answer}</div>
+                <div style="font-size: 0.75rem; color: var(--text-dim); font-style: italic;">${q.explanation}</div>
+            </div>
+        `).join('');
+
+        remedialOutputContainer.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem; margin-bottom: 0.75rem;">
+                <h4 style="font-weight: 800; color: var(--primary); margin: 0;">📋 ${plan.remedial_title}</h4>
+                <span style="font-size: 0.75rem; background: #e0e7ff; color: #3730a3; padding: 2px 8px; border-radius: 12px; font-weight: 700;">⏱️ ${plan.estimated_minutes} Min Intervention</span>
+            </div>
+            <p style="font-size: 0.85rem; color: var(--text-main); font-weight: 500; margin-bottom: 0.75rem;">${plan.core_concept_summary}</p>
+            <h5 style="font-size: 0.8rem; font-weight: 700; color: var(--text-dim); text-transform: uppercase; margin-bottom: 0.25rem;">Remedial Steps</h5>
+            <ol style="font-size: 0.85rem; color: var(--text-main); padding-left: 1.25rem; margin-bottom: 1rem;">${stepsHtml}</ol>
+            <h5 style="font-size: 0.8rem; font-weight: 700; color: var(--text-dim); text-transform: uppercase; margin-bottom: 0.25rem;">Micro-Practice Exercises</h5>
+            ${questionsHtml}
+        `;
+        if (window.lucide) lucide.createIcons();
+    } catch(e) {
+        console.error("Remedial Plan Error:", e);
+        remedialOutputContainer.innerHTML = `<div style="color: var(--danger);">Failed to generate remedial plan.</div>`;
+    }
+}
+
+if (btnRefreshHeatmap) btnRefreshHeatmap.addEventListener('click', loadClassroomHeatmap);
+if (btnGenerateRemedial) btnGenerateRemedial.addEventListener('click', () => triggerStudentRemedial('S001-ALPHA', 'Deep Q-Learning'));
+
 
 

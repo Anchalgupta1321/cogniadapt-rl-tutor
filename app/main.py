@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.database import engine, Base, seed_default_data
-from app.api import ingest_api, quiz_api, answer_api, rl_api, bkt_api, chat_api, revision_api
+from app.api import ingest_api, quiz_api, answer_api, rl_api, bkt_api, chat_api, revision_api, analytics_api
 
 # Create DB tables & seed default curriculum
 Base.metadata.create_all(bind=engine)
@@ -31,6 +31,8 @@ app.include_router(rl_api.router)
 app.include_router(bkt_api.router)
 app.include_router(chat_api.router)
 app.include_router(revision_api.router)
+app.include_router(analytics_api.router)
+
 
 import os
 # Create frontend directory unconditionally
